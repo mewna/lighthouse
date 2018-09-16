@@ -18,6 +18,10 @@ public interface LighthouseService {
     
     @Nonnull
     static String getIp() {
+        final String podIpEnv = System.getenv("POD_IP");
+        if(podIpEnv != null) {
+            return podIpEnv;
+        }
         try {
             return Inet4Address.getLocalHost().getHostAddress();
         } catch(final UnknownHostException e) {
