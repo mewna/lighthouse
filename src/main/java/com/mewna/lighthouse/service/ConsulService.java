@@ -92,7 +92,7 @@ public class ConsulService implements LighthouseService {
                         .setServiceId(id())
                         .setStatus(CheckStatus.PASSING)
                         .setInterval("1s")
-                        .setTtl("1s")
+                        .setTtl("60s")
                         .setDeregisterAfter("60s");
                 client.registerCheck(checkOptions, checkRes -> {
                     if(checkRes.succeeded()) {
