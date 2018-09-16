@@ -60,7 +60,7 @@ public class ConsulService implements LighthouseService {
         
         server = lighthouse.vertx().createHttpServer(new HttpServerOptions().setPort(healthcheckPort))
                 .requestHandler(req -> {
-                    if(id().equalsIgnoreCase(req.params().get("id"))) {
+                    if(req.path().endsWith(id())) {
                         req.response().setStatusCode(200).end("OK");
                     } else {
                         req.response().setStatusCode(500).end("NOTOK");
@@ -90,7 +90,7 @@ public class ConsulService implements LighthouseService {
         final CheckOptions checkOptions = new CheckOptions()
                 .setId(id())
                 .setName(id() + " healthcheck")
-                .setHttp("http://" + LighthouseService.getIp() + ':' + healthcheckPort + "/lighthouse/check?id=" + id())
+                .setHttp("http://" + LighthouseService.getIp() + ':' + healthcheckPort + "/lighthouse/check/" + id())
                 .setServiceId(id())
                 .setStatus(CheckStatus.PASSING)
                 .setInterval("1s")
