@@ -127,7 +127,7 @@ public class RedisPubsub implements LighthousePubsub {
                         .map(ServiceEntry::getService)
                         .map(Service::getId)
                         // Ignore self
-                        .filter(e -> !lighthouse.service().id().equals(e))
+                        // .filter(e -> !lighthouse.service().id().equals(e))
                         .forEach(e -> {
                             // For each service, generate a nonce and publish
                             final Future<JsonObject> pubsubFuture = Future.future();
