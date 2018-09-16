@@ -73,10 +73,11 @@ public class RedisPubsub implements LighthousePubsub {
                         final String nonce = payload.getString("nonce");
                         final String sender = payload.getString("sender");
                         final String target = payload.getString("target");
+                        final String mode = payload.getString("mode");
                         if(target.equals(lighthouse.service().id())) {
                             // If the target is this service, then we need to handle it
                             // and publish a response
-                            if(pending.containsKey(nonce)) {
+                            if(pending.containsKey(nonce) && mode.equals("response")) {
                                 // If we have the nonce, then we were waiting on it for a response
                                 // and can resolve the future now
                                 logger.debug("[Service] [{}] Completed nonce {} with data {}", lighthouse.service().id(),
@@ -100,7 +101,7 @@ public class RedisPubsub implements LighthousePubsub {
                                 }
                                 // We don't need to specify a target service here since the initiator
                                 // will accept it via nonce, not service id
-                                publish(payload(nonce, lighthouse.service().id(), sender, response));
+                                publish(payload(nonce, lighthouse.service().id(), sender, "response", response));
                             }
                         }
                     }
@@ -143,7 +144,7 @@ public class RedisPubsub implements LighthousePubsub {
                                     pubsubFuture.fail("Timeout (5000ms)");
                                 }
                             });
-                            publish(payload(nonce, lighthouse.service().id(), e, payload));
+                            publish(payload(nonce, lighthouse.service().id(), e, "request", payload));
                         });
                 // This is so fucking bad omfg
                 // CompositeFuture is stupid and takes a List<Future>
