@@ -61,8 +61,10 @@ public class ConsulService implements LighthouseService {
         server = lighthouse.vertx().createHttpServer(new HttpServerOptions().setPort(healthcheckPort))
                 .requestHandler(req -> {
                     if(req.path().endsWith(id())) {
+                        logger.info("[Service] [{}] Accepted healthcheck for {}", id(), req.path());
                         req.response().setStatusCode(200).end("OK");
                     } else {
+                        logger.warn("[Service] [{}] Denied healthcheck for {}", id(), req.path());
                         req.response().setStatusCode(500).end("NOTOK");
                     }
                 }).listen(res -> {
