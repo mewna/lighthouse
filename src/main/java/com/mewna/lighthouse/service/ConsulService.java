@@ -94,7 +94,7 @@ public class ConsulService implements LighthouseService {
         
         final CheckOptions checkOptions = new CheckOptions()
                 .setId(id())
-                .setName(id() + "  (Pod " + System.getenv("POD_NAME" + " )"))
+                .setName(id() + "  (Pod " + System.getenv("POD_NAME") + " )")
                 .setHttp("http://" + LighthouseService.getIp() + ':' + healthcheckPort + "/lighthouse/check/" + id())
                 .setServiceId(id())
                 .setStatus(CheckStatus.PASSING)
