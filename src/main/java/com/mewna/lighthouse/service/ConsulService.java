@@ -27,7 +27,7 @@ import java.util.stream.IntStream;
 @SuppressWarnings("unused")
 @RequiredArgsConstructor
 public class ConsulService implements LighthouseService {
-    private static final String CONSUL_SERVICE_NAME = "lighthouse-consul-node";
+    public static final String CONSUL_SERVICE_NAME = "lighthouse-consul-node";
     private static final String CONSUL_SHARDING_LOCK = "lighthouse-consul-sharding-lock";
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final UUID id = UUID.randomUUID();

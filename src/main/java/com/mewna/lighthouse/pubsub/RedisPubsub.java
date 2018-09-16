@@ -1,6 +1,7 @@
 package com.mewna.lighthouse.pubsub;
 
 import com.mewna.lighthouse.Lighthouse;
+import com.mewna.lighthouse.service.ConsulService;
 import com.mewna.lighthouse.service.LighthouseService;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
@@ -125,6 +126,8 @@ public class RedisPubsub implements LighthousePubsub {
                 list.getList().stream().filter(e -> e.getChecks().stream()
                         .allMatch(c -> c.getStatus() == CheckStatus.PASSING))
                         .map(ServiceEntry::getService)
+                        // Ignore non-lighthouse services
+                        .filter(e -> e.getName().equals(ConsulService.CONSUL_SERVICE_NAME))
                         .map(Service::getId)
                         // Ignore self
                         // .filter(e -> !lighthouse.service().id().equals(e))
