@@ -22,6 +22,7 @@ import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * @author amy
@@ -123,7 +124,8 @@ public class RedisPubsub implements LighthousePubsub {
             if(res.succeeded()) {
                 final ServiceEntryList list = res.result();
                 final List<Future<JsonObject>> futures = new ArrayList<>();
-                list.getList().stream().filter(e -> e.getChecks().stream()
+                
+                final List<String> ids = list.getList().stream().filter(e -> e.getChecks().stream()
                         .allMatch(c -> c.getStatus() == CheckStatus.PASSING))
                         .map(ServiceEntry::getService)
                         // Ignore non-lighthouse services
@@ -131,24 +133,29 @@ public class RedisPubsub implements LighthousePubsub {
                         .map(Service::getId)
                         // Ignore self
                         // .filter(e -> !lighthouse.service().id().equals(e))
-                        .forEach(e -> {
-                            // For each service, generate a nonce and publish
-                            final Future<JsonObject> pubsubFuture = Future.future();
-                            final String nonce = UUID.randomUUID().toString();
-                            logger.debug("[Service] [{}] Sending to service {} with nonce {}",
-                                    lighthouse.service().id(), e, nonce);
-                            pending.put(nonce, pubsubFuture);
-                            futures.add(pubsubFuture);
-                            lighthouse.vertx().setTimer(5_000L, __ -> {
-                                // Fail futures if they're not completed within 5s
-                                // Basically just trying to avoid leaking memory if the futures
-                                // don't get completed for whatever reason
-                                if(!pubsubFuture.isComplete()) {
-                                    pubsubFuture.fail("Timeout (5000ms)");
-                                }
-                            });
-                            publish(payload(nonce, lighthouse.service().id(), e, "request", payload));
-                        });
+                        .collect(Collectors.toList());
+                if(ids.size() != lighthouse.shardCount()) {
+                    logger.warn("[Service] [{}] Expecting pubsub with {} services, but found {}: {}",
+                            lighthouse.service().id(), lighthouse.shardCount(), ids.size(), ids);
+                }
+                ids.forEach(e -> {
+                    // For each service, generate a nonce and publish
+                    final Future<JsonObject> pubsubFuture = Future.future();
+                    final String nonce = UUID.randomUUID().toString();
+                    logger.debug("[Service] [{}] Sending to service {} with nonce {}",
+                            lighthouse.service().id(), e, nonce);
+                    pending.put(nonce, pubsubFuture);
+                    futures.add(pubsubFuture);
+                    lighthouse.vertx().setTimer(5_000L, __ -> {
+                        // Fail futures if they're not completed within 5s
+                        // Basically just trying to avoid leaking memory if the futures
+                        // don't get completed for whatever reason
+                        if(!pubsubFuture.isComplete()) {
+                            pubsubFuture.fail("Timeout (5000ms)");
+                        }
+                    });
+                    publish(payload(nonce, lighthouse.service().id(), e, "request", payload));
+                });
                 // This is so fucking bad omfg
                 // CompositeFuture is stupid and takes a List<Future>
                 // BUT THIS COMPLETELY IGNORES THE FACT THAT FUTURES CAN HAVE A TYPE PARAMETER
