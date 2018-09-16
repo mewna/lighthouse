@@ -78,7 +78,9 @@ public class ConsulService implements LighthouseService {
         
         final ServiceOptions serviceOptions = new ServiceOptions()
                 .setName(CONSUL_SERVICE_NAME)
-                .setId(id());
+                .setId(id())
+                .setAddress(LighthouseService.getIp())
+                ;
         client.registerService(serviceOptions, res -> {
             if(res.succeeded()) {
                 logger.info("Successfully registered {} id {}", CONSUL_SERVICE_NAME, id());
@@ -91,7 +93,7 @@ public class ConsulService implements LighthouseService {
         
         final CheckOptions checkOptions = new CheckOptions()
                 .setId(id())
-                .setName(id() + " healthcheck")
+                .setName(id() + "  (Pod " + System.getenv("POD_NAME" + " )"))
                 .setHttp("http://" + LighthouseService.getIp() + ':' + healthcheckPort + "/lighthouse/check/" + id())
                 .setServiceId(id())
                 .setStatus(CheckStatus.PASSING)
