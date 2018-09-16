@@ -12,8 +12,23 @@ import java.util.Collection;
  * @since 9/14/18.
  */
 public interface LighthousePubsub {
+    /**
+     * Start the pubsub instance
+     *
+     * @param options Options for connecting to Redis
+     *
+     * @return A future that resolves when the pubsub client is ready
+     */
     Future<LighthousePubsub> init(@Nonnull RedisOptions options);
     
+    /**
+     * Send a pubsub message to all connected services
+     *
+     * @param payload The message to send
+     *
+     * @return A future that resolves when all service nodes have responded to
+     * the pubsub message.
+     */
     Future<Collection<JsonObject>> pubsub(@Nonnull JsonObject payload);
     
     default JsonObject payload(@Nonnull final String nonce, @Nonnull final String sender, @Nonnull final String target,

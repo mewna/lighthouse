@@ -17,6 +17,24 @@ import java.util.function.Function;
  */
 @SuppressWarnings("unused")
 public interface Lighthouse {
+    /**
+     * Create a new lighthouse instance and get started!
+     *
+     * @param shardCount      The number of shards for this lighthouse
+     *                        instance.
+     * @param consulHost      The hostname of the Consul server to use.
+     * @param healthcheckPort The port to run the healthcheck server on. In
+     *                        production, this should probably be {@code 80}.
+     * @param redisHost       The hostname of the Redis server to use.
+     * @param redisAuth       The password used to access the Redis server. Not
+     *                        optional.
+     * @param bootCallback    The callback used when booting the shard for this
+     *                        node.
+     * @param messageHandler  The callback used when receiving non-internal
+     *                        pubsub messages.
+     *
+     * @return
+     */
     static Lighthouse lighthouse(@Nonnegative final int shardCount, @Nonnull final String consulHost,
                                  @Nonnegative final int healthcheckPort, @Nonnull final String redisHost,
                                  @Nonnull final String redisAuth,
@@ -26,24 +44,69 @@ public interface Lighthouse {
                 messageHandler);
     }
     
+    /**
+     * The vert.x instance being used for this lighthouse instance. If you're
+     * using something else that relies on vert.x (ex.
+     * <a href="https://github.com/mewna/catnip">catnip</a>), you can use this
+     * to pass down the vert.x instance instead of creating multiple.
+     *
+     * @return A vert.x instance. Will not be null.
+     */
     @Nonnull
     Vertx vertx();
     
+    /**
+     * Start the lighthouse instance. Will set up pubsub, consul, etc.
+     *
+     * @return A {@link Future} that is resolved once the lighthouse components
+     * are fully started.
+     */
     @Nonnull
     Future<Lighthouse> init();
     
+    /**
+     * Start the shard for this lighthouse instance.
+     *
+     * @return A future that resolves when a shard id and total are acquired.
+     */
     @Nonnull
     Future<Void> startShard();
     
+    /**
+     * The pubsub client used by this lighthouse instance. Used for fetching
+     * shard ids. May also be useful for eg. distributed eval commands.
+     *
+     * @return The pubsub client for this instance.
+     */
     @Nonnull
     LighthousePubsub pubsub();
     
+    /**
+     * The Consul service used by this lighthouse instance. You
+     * <strong>probably</strong> don't want to use this yourself; it's mainly
+     * exposed for internal usage. If you need eg. distributed locking, you may
+     * find it slightly useful.
+     *
+     * @return The consul service for this instance.
+     */
     @Nonnull
     LighthouseService service();
     
+    /**
+     * The shard count being used by this lighthouse instance. Will never be
+     * negative. Should never equal zero.
+     *
+     * @return The shard count for this lighthouse instance.
+     */
     @Nonnegative
     int shardCount();
     
+    /**
+     * The callback that's invoked when it's time to actually boot a shard. You
+     * probably don't want to call this method ever.
+     *
+     * @return The shard boot callback.
+     */
     @Nonnull
     BiFunction<Integer, Integer, Boolean> bootCallback();
 }
