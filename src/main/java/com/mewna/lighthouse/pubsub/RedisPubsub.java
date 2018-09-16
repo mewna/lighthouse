@@ -79,7 +79,8 @@ public class RedisPubsub implements LighthousePubsub {
                             if(pending.containsKey(nonce)) {
                                 // If we have the nonce, then we were waiting on it for a response
                                 // and can resolve the future now
-                                logger.info("Completed nonce {} with data {}", nonce, data.encodePrettily());
+                                logger.debug("[Service] [{}] Completed nonce {} with data {}", lighthouse.service().id(),
+                                        nonce, data.encodePrettily());
                                 final Future<JsonObject> pendingFuture = pending.remove(nonce);
                                 pendingFuture.complete(data);
                             } else {
@@ -89,9 +90,11 @@ public class RedisPubsub implements LighthousePubsub {
                                 final JsonObject response;
                                 if(LighthouseService.SHARD_ID_QUERY.equals(maybeType)) {
                                     // Fetch shard id
-                                    response = new JsonObject().put("id", lighthouse.service().id()).put("shard", lighthouse.service().shardId());
+                                    response = new JsonObject().put("id", lighthouse.service().id())
+                                            .put("shard", lighthouse.service().shardId());
                                 } else {
-                                    logger.info("Invoking user-provided messagehandler for message: {}", payload.encodePrettily());
+                                    logger.debug("[Service] [{}] Invoking user-provided messagehandler for message: {}",
+                                            lighthouse.service().id(), payload.encodePrettily());
                                     // User-provided handler
                                     response = messageHandler.apply(data);
                                 }
@@ -118,7 +121,8 @@ public class RedisPubsub implements LighthousePubsub {
             if(res.succeeded()) {
                 final ServiceEntryList list = res.result();
                 final List<Future<JsonObject>> futures = new ArrayList<>();
-                list.getList().stream().filter(e -> e.getChecks().stream().allMatch(c -> c.getStatus() == CheckStatus.PASSING))
+                list.getList().stream().filter(e -> e.getChecks().stream()
+                        .allMatch(c -> c.getStatus() == CheckStatus.PASSING))
                         .map(ServiceEntry::getService)
                         .map(Service::getId)
                         // Ignore self
@@ -127,7 +131,8 @@ public class RedisPubsub implements LighthousePubsub {
                             // For each service, generate a nonce and publish
                             final Future<JsonObject> pubsubFuture = Future.future();
                             final String nonce = UUID.randomUUID().toString();
-                            logger.info("[Service] [{}] Sending to service {} with nonce {}", lighthouse.service().id(), e, nonce);
+                            logger.debug("[Service] [{}] Sending to service {} with nonce {}",
+                                    lighthouse.service().id(), e, nonce);
                             pending.put(nonce, pubsubFuture);
                             futures.add(pubsubFuture);
                             lighthouse.vertx().setTimer(5_000L, __ -> {
