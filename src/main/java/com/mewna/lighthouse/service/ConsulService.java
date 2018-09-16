@@ -71,8 +71,40 @@ public class ConsulService implements LighthouseService {
                 .setId(id());
         client.registerService(serviceOptions, res -> {
             if(res.succeeded()) {
-                logger.info("Successfully registered {} id {}", CONSUL_SERVICE_NAME, id());
-                serviceFuture.complete(null);
+                // Kubernetes may reuse pod IPs. This causes pubsub to do the
+                // Wrong Thing:tm: and time out.
+                // To resolve this, we check for existing services with the
+                // same IP as the current pod, and unregister them.
+                // Setting the DONT_UNREGISTER_DUPE_IPS env var will disable
+                // this behaviour (mainly useful for local non-kube testing).
+                if(System.getenv("DONT_UNREGISTER_DUPE_IPS") == null) {
+                    getAllServices().setHandler(serviceRes -> {
+                        if(serviceRes.succeeded()) {
+                            final ServiceEntryList services = serviceRes.result();
+                            final Optional<ServiceEntry> probablySelf = services.getList().stream()
+                                    .filter(e -> e.getService().getId().equals(id())).findFirst();
+                            if(probablySelf.isPresent()) {
+                                final ServiceEntry self = probablySelf.get();
+                                services.getList().stream().filter(e -> !e.getService().getId().equals(id()))
+                                        .filter(e -> e.getService().getAddress().equals(self.getService().getAddress()))
+                                        .forEach(s -> {
+                                            // fuck it
+                                            logger.warn("[Service] [{}] Unregistering duplicated service {}", id(),
+                                                    s.getService().getId());
+                                            client.deregisterService(s.getService().getId(), __ -> {});
+                                        });
+                                ;
+                            } else {
+                                serverFuture.fail("No self service present!");
+                            }
+                        } else {
+                            serverFuture.fail(serviceRes.cause());
+                        }
+                    });
+                } else {
+                    logger.info("Successfully registered {} id {}", CONSUL_SERVICE_NAME, id());
+                    serviceFuture.complete(null);
+                }
             } else {
                 logger.error("Couldn't register service in consul!", res.cause());
                 serviceFuture.fail(res.cause());
