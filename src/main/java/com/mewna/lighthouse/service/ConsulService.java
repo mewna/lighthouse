@@ -15,6 +15,8 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -77,6 +79,7 @@ public class ConsulService implements LighthouseService {
                 // same IP as the current pod, and unregister them.
                 // Setting the DONT_UNREGISTER_DUPE_IPS env var will disable
                 // this behaviour (mainly useful for local non-kube testing).
+                /*
                 if(System.getenv("DONT_UNREGISTER_DUPE_IPS") == null) {
                     getAllServices().setHandler(serviceRes -> {
                         if(serviceRes.succeeded()) {
@@ -101,10 +104,19 @@ public class ConsulService implements LighthouseService {
                             serviceFuture.fail(serviceRes.cause());
                         }
                     });
-                } else {
-                    logger.info("Successfully registered {} id {}", CONSUL_SERVICE_NAME, id());
-                    serviceFuture.complete(null);
-                }
+                } else {*/
+                logger.info("Successfully registered {} id {}", CONSUL_SERVICE_NAME, id());
+                Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                    final CompletableFuture<Void> f = new CompletableFuture<>();
+                    client.deregisterService(id(), __ -> f.complete(null));
+                    try {
+                        f.get();
+                    } catch(final InterruptedException | ExecutionException e) {
+                        e.printStackTrace();
+                    }
+                }));
+                serviceFuture.complete(null);
+                /*}*/
             } else {
                 logger.error("Couldn't register service in consul!", res.cause());
                 serviceFuture.fail(res.cause());
