@@ -189,16 +189,20 @@ public class ConsulService implements LighthouseService {
                                         }
                                     } else {
                                         logger.error("== Failed shard id acquisition");
-                                        unlockFail(future, "Failed shard id acquisition");
+                                        // unlockFail(future, "Failed shard id acquisition");
+                                        unlock(Future.future());
+                                        queueRetry(future, connectCallback);
                                     }
                                 }
                             } else {
                                 logger.error("== Failed fetching known shards");
-                                unlockFail(future, "Couldn't fetch known shards");
+                                // unlockFail(future, "Couldn't fetch known shards");
+                                unlock(Future.future());
+                                queueRetry(future, connectCallback);
                             }
                         });
                     }, () -> {
-                        // Failed
+                        logger.error("== Failed locking");
                         queueRetry(future, connectCallback);
                     });
                 }
