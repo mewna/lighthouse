@@ -14,10 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
-import java.util.Collection;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -41,8 +38,6 @@ public class ConsulService implements LighthouseService {
     private ConsulClient client;
     @Getter
     private int shardId = -1;
-    
-    private final Thread shutdownHook = new Thread(() -> unlock(Future.future()));
     
     @Nonnull
     @Override
@@ -90,8 +85,8 @@ public class ConsulService implements LighthouseService {
                 .setHttp("http://" + LighthouseService.getIp() + ':' + healthcheckPort)
                 .setServiceId(id())
                 .setStatus(CheckStatus.PASSING)
-                .setInterval("500ms")
-                .setDeregisterAfter("10s");
+                .setInterval("1s")
+                .setDeregisterAfter("60s");
         client.registerCheck(checkOptions, res -> {
             if(res.succeeded()) {
                 logger.info("Healthchecks registered for {} id {}", CONSUL_SERVICE_NAME, id());
@@ -118,9 +113,100 @@ public class ConsulService implements LighthouseService {
     public Future<Void> connect(@Nonnull final BiFunction<Integer, Integer, Boolean> connectCallback) {
         final Future<Void> future = Future.future();
         
-        tryLock(future, connectCallback);
+        tryDoConnect(future, connectCallback);
         
         return future;
+    }
+    
+    private void tryLock(@Nonnull final Future<Void> future, @Nonnull final Runnable workedCallback,
+                         @Nonnull final Runnable failedCallback) {
+        final SessionOptions sessionOpts = new SessionOptions()
+                .setName("lighthouse-sharding-lock")
+                .setTtl(15_000L)
+                .setLockDelay(10L)
+                .setChecks(Arrays.asList("serfHealth", id()))
+                .setBehavior(SessionBehavior.DELETE);
+        client.createSessionWithOptions(sessionOpts, sessionRes -> {
+            if(sessionRes.succeeded()) {
+                final String session = sessionRes.result();
+                logger.info("Attempting Consul lock acquisition...");
+                final KeyValueOptions lockOpts = new KeyValueOptions()
+                        //.setCasIndex(0L)
+                        .setAcquireSession(session);
+                client.putValueWithOptions(CONSUL_SHARDING_LOCK, id(), lockOpts, lockRes -> {
+                    // Returns `true` if we acquire the lock, `false` otherwise.
+                    if(lockRes.succeeded() && lockRes.result()) {
+                        logger.info("Acquired consul lock!");
+                        workedCallback.run();
+                    } else {
+                        logger.error("== Failed consul lock acquisition (success={} lock={})",
+                                lockRes.succeeded(), lockRes.result());
+                        failedCallback.run();
+                    }
+                });
+            } else {
+                future.fail("Couldn't acquire consul session");
+            }
+        });
+    }
+    
+    private void tryDoConnect(@Nonnull final Future<Void> future,
+                              @Nonnull final BiFunction<Integer, Integer, Boolean> connectCallback) {
+        logger.info("== Starting connect...");
+        getKnownServiceCount().setHandler(countRes -> {
+            if(countRes.succeeded()) {
+                final int serviceCount = countRes.result();
+                if(serviceCount < lighthouse.shardCount()) {
+                    logger.warn("== Not enough nodes to start sharding ({} < {}), queueing retry...", serviceCount, lighthouse.shardCount());
+                    queueRetry(future, connectCallback);
+                } else {
+                    tryLock(future, () -> {
+                        // Worked
+                        // We have a lock, start shard
+                        final int shardCount = lighthouse.shardCount();
+                        final Set<Integer> allIds = getAllShards();
+                        
+                        getKnownShards().setHandler(res -> {
+                            if(res.succeeded()) {
+                                final Set<Integer> knownIds = res.result();
+                                logger.info("Acquired known IDs: {}", knownIds);
+                                allIds.removeAll(knownIds);
+                                if(allIds.isEmpty()) {
+                                    unlockFail(future, "No IDs left!");
+                                } else {
+                                    // We have some IDs available, just grab the first one and run with it
+                                    final Optional<Integer> maybeId = allIds.stream().limit(1).findFirst();
+                                    if(maybeId.isPresent()) {
+                                        final int id = maybeId.get();
+                                        shardId = id;
+                                        final boolean didResume = connectCallback.apply(id, shardCount);
+                                        if(didResume) {
+                                            // Unlock immediately
+                                            unlock(future);
+                                        } else {
+                                            // Unlock later
+                                            lighthouse.vertx().setTimer(5_500L, __ -> unlock(future));
+                                        }
+                                    } else {
+                                        logger.error("== Failed shard id acquisition");
+                                        unlockFail(future, "Failed shard id acquisition");
+                                    }
+                                }
+                            } else {
+                                logger.error("== Failed fetching known shards");
+                                unlockFail(future, "Couldn't fetch known shards");
+                            }
+                        });
+                    }, () -> {
+                        // Failed
+                        queueRetry(future, connectCallback);
+                    });
+                }
+            } else {
+                logger.warn("== Couldn't get known service count, queueing retry...");
+                queueRetry(future, connectCallback);
+            }
+        });
     }
     
     private Future<Integer> getKnownServiceCount() {
@@ -161,82 +247,9 @@ public class ConsulService implements LighthouseService {
         return future;
     }
     
-    private void tryLock(@Nonnull final Future<Void> future,
-                         @Nonnull final BiFunction<Integer, Integer, Boolean> connectCallback) {
-        logger.info("== Starting connect...");
-        Runtime.getRuntime().addShutdownHook(shutdownHook);
-        getKnownServiceCount().setHandler(countRes -> {
-            if(countRes.succeeded()) {
-                final int serviceCount = countRes.result();
-                if(serviceCount < lighthouse.shardCount()) {
-                    logger.warn("== Not enough nodes to start sharding ({} < {}), queueing retry...", serviceCount, lighthouse.shardCount());
-                    Runtime.getRuntime().removeShutdownHook(shutdownHook);
-                    queueRetry(future, connectCallback);
-                } else {
-                    logger.info("Attempting Consul lock acquisition...");
-                    final KeyValueOptions lockOpts = new KeyValueOptions().setCasIndex(0L).setReleaseSession("");
-                    client.putValueWithOptions(CONSUL_SHARDING_LOCK, id(), lockOpts, lockRes -> {
-                        // Returns `true` if we acquire the lock, `false` otherwise.
-                        if(lockRes.succeeded() && lockRes.result()) {
-                            logger.info("Acquired consul lock!");
-                            // We have a lock, start shard
-                            final int shardCount = lighthouse.shardCount();
-                            final Set<Integer> allIds = getAllShards();
-                            
-                            getKnownShards().setHandler(res -> {
-                                if(res.succeeded()) {
-                                    final Set<Integer> knownIds = res.result();
-                                    logger.info("Acquired known IDs: {}", knownIds);
-                                    allIds.removeAll(knownIds);
-                                    if(allIds.isEmpty()) {
-                                        unlockFail(future, "No IDs left!");
-                                    } else {
-                                        // We have some IDs available, just grab the first one and run with it
-                                        final Optional<Integer> maybeId = allIds.stream().limit(1).findFirst();
-                                        if(maybeId.isPresent()) {
-                                            final int id = maybeId.get();
-                                            shardId = id;
-                                            final boolean didResume = connectCallback.apply(id, shardCount);
-                                            if(didResume) {
-                                                // Unlock immediately
-                                                Runtime.getRuntime().removeShutdownHook(shutdownHook);
-                                                unlock(future);
-                                            } else {
-                                                // Unlock later
-                                                Runtime.getRuntime().removeShutdownHook(shutdownHook);
-                                                lighthouse.vertx().setTimer(5_500L, __ -> unlock(future));
-                                            }
-                                        } else {
-                                            Runtime.getRuntime().removeShutdownHook(shutdownHook);
-                                            logger.error("== Failed shard id acquisition");
-                                            unlockFail(future, "Failed shard id acquisition");
-                                        }
-                                    }
-                                } else {
-                                    Runtime.getRuntime().removeShutdownHook(shutdownHook);
-                                    logger.error("== Failed fetching known shards");
-                                    unlockFail(future, "Couldn't fetch known shards");
-                                }
-                            });
-                        } else {
-                            Runtime.getRuntime().removeShutdownHook(shutdownHook);
-                            logger.error("== Failed consul lock acquisition (success={} lock={}), requeueing...",
-                                    lockRes.succeeded(), lockRes.result());
-                            queueRetry(future, connectCallback);
-                        }
-                    });
-                }
-            } else {
-                Runtime.getRuntime().removeShutdownHook(shutdownHook);
-                logger.warn("== Couldn't get known service count, queueing retry...");
-                queueRetry(future, connectCallback);
-            }
-        });
-    }
-    
     private void queueRetry(@Nonnull final Future<Void> future,
                             @Nonnull final BiFunction<Integer, Integer, Boolean> connectCallback) {
-        lighthouse.vertx().setTimer(1_000L, __ -> tryLock(future, connectCallback));
+        lighthouse.vertx().setTimer(2_500L, __ -> tryDoConnect(future, connectCallback));
     }
     
     private void unlock(@Nonnull final Future<Void> future) {
