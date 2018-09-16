@@ -93,12 +93,12 @@ public class ConsulService implements LighthouseService {
                                                     s.getService().getId());
                                             client.deregisterService(s.getService().getId(), __ -> {});
                                         });
-                                ;
+                                serviceFuture.complete(null);
                             } else {
-                                serverFuture.fail("No self service present!");
+                                serviceFuture.fail("No self service present!");
                             }
                         } else {
-                            serverFuture.fail(serviceRes.cause());
+                            serviceFuture.fail(serviceRes.cause());
                         }
                     });
                 } else {
