@@ -82,7 +82,7 @@ public class ConsulService implements LighthouseService {
         final CheckOptions checkOptions = new CheckOptions()
                 .setId(id())
                 .setName(id() + " healthcheck")
-                .setHttp("http://" + LighthouseService.getIp() + ':' + healthcheckPort)
+                .setHttp("http://" + LighthouseService.getIp() + ':' + healthcheckPort + "/lighthouse/check")
                 .setServiceId(id())
                 .setStatus(CheckStatus.PASSING)
                 .setInterval("1s")
