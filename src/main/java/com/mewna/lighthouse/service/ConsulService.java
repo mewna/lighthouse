@@ -59,7 +59,13 @@ public class ConsulService implements LighthouseService {
         client = ConsulClient.create(lighthouse.vertx(), new ConsulClientOptions().setHost(host));
         
         server = lighthouse.vertx().createHttpServer(new HttpServerOptions().setPort(healthcheckPort))
-                .requestHandler(req -> req.response().setStatusCode(200).end("OK")).listen(res -> {
+                .requestHandler(req -> {
+                    if(id().equalsIgnoreCase(req.params().get("id"))) {
+                        req.response().setStatusCode(200).end("OK");
+                    } else {
+                        req.response().setStatusCode(500).end("NOTOK");
+                    }
+                }).listen(res -> {
                     if(res.succeeded()) {
                         logger.info("Healthcheck server listening on port {}", healthcheckPort);
                         serverFuture.complete(null);
@@ -73,6 +79,13 @@ public class ConsulService implements LighthouseService {
                 .setId(id());
         client.registerService(serviceOptions, res -> {
             if(res.succeeded()) {
+                // TODO: Sometimes we get duplicated services via IP memen
+                // This solution here \/\/\/ does not work, because it may
+                // remove the WRONG SERVICE(S) under some circumstances, ie.
+                // removing CORRECT(!), VALID(!) services! This is a REALLY BAD
+                // THING:tm:, and so we don't wanna use this solution
+                // The problem then becomes, how do we detect duplicated services?
+                
                 // Kubernetes may reuse pod IPs. This causes pubsub to do the
                 // Wrong Thing:tm: and time out.
                 // To resolve this, we check for existing services with the
@@ -106,6 +119,7 @@ public class ConsulService implements LighthouseService {
                     });
                 } else {*/
                 logger.info("Successfully registered {} id {}", CONSUL_SERVICE_NAME, id());
+                /*
                 Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                     final CompletableFuture<Void> f = new CompletableFuture<>();
                     client.deregisterService(id(), __ -> f.complete(null));
@@ -114,7 +128,7 @@ public class ConsulService implements LighthouseService {
                     } catch(final InterruptedException | ExecutionException e) {
                         e.printStackTrace();
                     }
-                }));
+                }));*/
                 serviceFuture.complete(null);
                 /*}*/
             } else {
@@ -126,7 +140,7 @@ public class ConsulService implements LighthouseService {
         final CheckOptions checkOptions = new CheckOptions()
                 .setId(id())
                 .setName(id() + " healthcheck")
-                .setHttp("http://" + LighthouseService.getIp() + ':' + healthcheckPort + "/lighthouse/check")
+                .setHttp("http://" + LighthouseService.getIp() + ':' + healthcheckPort + "/lighthouse/check?id=" + id())
                 .setServiceId(id())
                 .setStatus(CheckStatus.PASSING)
                 .setInterval("1s")

@@ -32,6 +32,12 @@ don't want to do this, you have to implement the full-retry logic
 yourself. I'm open to PRs to solve this, but will not be implementing it
 at this time.
 
+**WARNING**
+
+Due to how Consul services work, it may take a little bit for a reshard
+to fully work, and you may end up with a little more downtime (probably
+~5m at most) than you might expect!
+
 ## Installation
 
 Install it to your maven local somehow, idk
