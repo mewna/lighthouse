@@ -195,7 +195,7 @@ public class ConsulService implements LighthouseService {
                                     }
                                 }
                             } else {
-                                logger.error("== Failed fetching known shards");
+                                logger.error("== Failed fetching known shards", res.cause());
                                 // unlockFail(future, "Couldn't fetch known shards");
                                 unlock(Future.future());
                                 queueRetry(future, connectCallback);
