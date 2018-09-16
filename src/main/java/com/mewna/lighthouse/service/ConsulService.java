@@ -78,6 +78,7 @@ public class ConsulService implements LighthouseService {
         
         final ServiceOptions serviceOptions = new ServiceOptions()
                 .setName(CONSUL_SERVICE_NAME)
+                .setTags(Collections.singletonList(id() + "  (Pod " + System.getenv("POD_NAME" + " )")))
                 .setId(id())
                 .setAddress(LighthouseService.getIp())
                 ;
