@@ -84,29 +84,31 @@ public class ConsulService implements LighthouseService {
                 ;
         client.registerService(serviceOptions, res -> {
             if(res.succeeded()) {
+                // Register checks
+                final CheckOptions checkOptions = new CheckOptions()
+                        .setId(id())
+                        .setName(id() + "  (Pod " + System.getenv("POD_NAME") + " )")
+                        .setHttp("http://" + LighthouseService.getIp() + ':' + healthcheckPort + "/lighthouse/check/" + id())
+                        .setServiceId(id())
+                        .setStatus(CheckStatus.PASSING)
+                        .setInterval("1s")
+                        .setTtl("1s")
+                        .setDeregisterAfter("60s");
+                client.registerCheck(checkOptions, checkRes -> {
+                    if(checkRes.succeeded()) {
+                        logger.info("Healthchecks registered for {} id {}", CONSUL_SERVICE_NAME, id());
+                        checkFuture.complete(null);
+                    } else {
+                        logger.error("Couldn't register service healthchecks in consul!", checkRes.cause());
+                        checkFuture.fail(checkRes.cause());
+                    }
+                });
+    
                 logger.info("Successfully registered {} id {}", CONSUL_SERVICE_NAME, id());
                 serviceFuture.complete(null);
             } else {
                 logger.error("Couldn't register service in consul!", res.cause());
                 serviceFuture.fail(res.cause());
-            }
-        });
-        
-        final CheckOptions checkOptions = new CheckOptions()
-                .setId(id())
-                .setName(id() + "  (Pod " + System.getenv("POD_NAME") + " )")
-                .setHttp("http://" + LighthouseService.getIp() + ':' + healthcheckPort + "/lighthouse/check/" + id())
-                .setServiceId(id())
-                .setStatus(CheckStatus.PASSING)
-                .setInterval("1s")
-                .setDeregisterAfter("60s");
-        client.registerCheck(checkOptions, res -> {
-            if(res.succeeded()) {
-                logger.info("Healthchecks registered for {} id {}", CONSUL_SERVICE_NAME, id());
-                checkFuture.complete(null);
-            } else {
-                logger.error("Couldn't register service healthchecks in consul!", res.cause());
-                checkFuture.fail(res.cause());
             }
         });
         

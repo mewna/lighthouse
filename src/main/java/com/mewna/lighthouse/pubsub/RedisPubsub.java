@@ -166,6 +166,7 @@ public class RedisPubsub implements LighthousePubsub {
                 // This is apparently due to the fact that their code generator does not understand wildcards:
                 // https://github.com/eclipse-vertx/vert.x/issues/2627#issuecomment-421537706
                 // /shrug
+                
                 CompositeFuture.all(Arrays.asList(futures.toArray(new Future[0]))).setHandler(pubsubResolve -> {
                     if(pubsubResolve.succeeded()) {
                         // Also CompositeFuture is gay and won't return, like, the data inside the futures
