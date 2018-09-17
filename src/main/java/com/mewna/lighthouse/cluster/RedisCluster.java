@@ -18,7 +18,6 @@ import javax.annotation.Nonnegative;
 import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * @author amy
@@ -30,7 +29,6 @@ import java.util.UUID;
 public class RedisCluster implements LighthouseCluster {
     private static final String LIGHTHOUSE_CLUSTER_KEY = "lighthouse:cluster:discovery";
     
-    private final UUID id = UUID.randomUUID();
     private final Logger logger = LoggerFactory.getLogger(getClass());
     
     private final Lighthouse lighthouse;
@@ -50,7 +48,7 @@ public class RedisCluster implements LighthouseCluster {
     @Nonnull
     @Override
     public String id() {
-        return id.toString();
+        return lighthouse.service().id();
     }
     
     @Nonnull
