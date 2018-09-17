@@ -40,7 +40,7 @@ public final class LighthouseImpl implements Lighthouse {
     @Getter
     private final Function<JsonObject, JsonObject> messageHandler;
     @Getter
-    private final Vertx vertx = Vertx.vertx(new VertxOptions().setClustered(true));
+    private final Vertx vertx = Vertx.vertx(new VertxOptions());
     @Getter
     private LighthousePubsub pubsub;
     @Getter
