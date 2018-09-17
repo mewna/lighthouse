@@ -51,7 +51,7 @@ public final class LighthouseImpl implements Lighthouse {
     @Nonnull
     @Override
     public Future<Lighthouse> init() {
-        service = new ConsulService(this, healthcheckPort);
+        service = new ConsulService(this);
         pubsub = new RedisPubsub(this, messageHandler);
         cluster = new RedisCluster(this);
         
