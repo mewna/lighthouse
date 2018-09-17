@@ -1,6 +1,7 @@
 package com.mewna.lighthouse;
 
 import com.mewna.lighthouse.cluster.LighthouseCluster;
+import com.mewna.lighthouse.cluster.RedisCluster;
 import com.mewna.lighthouse.pubsub.LighthousePubsub;
 import com.mewna.lighthouse.pubsub.RedisPubsub;
 import com.mewna.lighthouse.service.ConsulService;
@@ -52,12 +53,14 @@ public final class LighthouseImpl implements Lighthouse {
     public Future<Lighthouse> init() {
         service = new ConsulService(this, healthcheckPort);
         pubsub = new RedisPubsub(this, messageHandler);
+        cluster = new RedisCluster(this);
         
         final Future<Lighthouse> future = Future.future();
         
         CompositeFuture.all(Arrays.asList(
                 service.init(consulHost),
-                pubsub.init(new RedisOptions().setHost(redisHost).setAuth(redisAuth))
+                pubsub.init(new RedisOptions().setHost(redisHost).setAuth(redisAuth)),
+                cluster.init(new RedisOptions().setHost(redisHost).setAuth(redisAuth), healthcheckPort)
         )).setHandler(res -> {
             if(res.succeeded()) {
                 future.complete(this);
