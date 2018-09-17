@@ -115,7 +115,7 @@ public class RedisCluster implements LighthouseCluster {
                 final JsonObject entries = query.result();
                 entries.getMap().forEach((k, v) -> {
                     final String ip = (String) v;
-                    client.getAbs(ip).send(res -> {
+                    client.getAbs("http://" + ip).send(res -> {
                         if(res.succeeded()) {
                             logger.debug("Successfully pinged {} @ {}.", k, ip);
                         } else {
