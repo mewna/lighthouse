@@ -1,5 +1,6 @@
 package com.mewna.lighthouse;
 
+import com.mewna.lighthouse.cluster.LighthouseCluster;
 import com.mewna.lighthouse.pubsub.LighthousePubsub;
 import com.mewna.lighthouse.pubsub.RedisPubsub;
 import com.mewna.lighthouse.service.ConsulService;
@@ -7,6 +8,7 @@ import com.mewna.lighthouse.service.LighthouseService;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
+import io.vertx.core.VertxOptions;
 import io.vertx.core.json.JsonObject;
 import io.vertx.redis.RedisOptions;
 import lombok.Getter;
@@ -37,11 +39,13 @@ public final class LighthouseImpl implements Lighthouse {
     @Getter
     private final Function<JsonObject, JsonObject> messageHandler;
     @Getter
-    private final Vertx vertx = Vertx.vertx();
+    private final Vertx vertx = Vertx.vertx(new VertxOptions().setClustered(true));
     @Getter
     private LighthousePubsub pubsub;
     @Getter
     private LighthouseService service;
+    @Getter
+    private LighthouseCluster cluster;
     
     @Nonnull
     @Override

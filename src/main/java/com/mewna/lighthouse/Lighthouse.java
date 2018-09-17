@@ -1,5 +1,6 @@
 package com.mewna.lighthouse;
 
+import com.mewna.lighthouse.cluster.LighthouseCluster;
 import com.mewna.lighthouse.pubsub.LighthousePubsub;
 import com.mewna.lighthouse.service.LighthouseService;
 import io.vertx.core.Future;
@@ -33,7 +34,7 @@ public interface Lighthouse {
      * @param messageHandler  The callback used when receiving non-internal
      *                        pubsub messages.
      *
-     * @return
+     * @return A new lighthouse instance.
      */
     static Lighthouse lighthouse(@Nonnegative final int shardCount, @Nonnull final String consulHost,
                                  @Nonnegative final int healthcheckPort, @Nonnull final String redisHost,
@@ -91,6 +92,15 @@ public interface Lighthouse {
      */
     @Nonnull
     LighthouseService service();
+    
+    /**
+     * The cluster handler for this lighthouse instance. You probably don't
+     * want to be touching this yourself.
+     *
+     * @return The cluster handler for this instance.
+     */
+    @Nonnull
+    LighthouseCluster cluster();
     
     /**
      * The shard count being used by this lighthouse instance. Will never be

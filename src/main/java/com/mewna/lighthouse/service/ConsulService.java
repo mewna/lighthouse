@@ -15,8 +15,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -80,8 +78,7 @@ public class ConsulService implements LighthouseService {
                 .setName(CONSUL_SERVICE_NAME)
                 .setTags(Collections.singletonList(id() + "  (Pod " + System.getenv("POD_NAME" + " )")))
                 .setId(id())
-                .setAddress(LighthouseService.getIp())
-                ;
+                .setAddress(LighthouseService.getIp());
         client.registerService(serviceOptions, res -> {
             if(res.succeeded()) {
                 // Register checks
@@ -102,7 +99,7 @@ public class ConsulService implements LighthouseService {
                         checkFuture.fail(checkRes.cause());
                     }
                 });
-    
+                
                 logger.info("Successfully registered {} id {}", CONSUL_SERVICE_NAME, id());
                 serviceFuture.complete(null);
             } else {
@@ -187,6 +184,7 @@ public class ConsulService implements LighthouseService {
                                 allIds.removeAll(knownIds);
                                 if(allIds.isEmpty()) {
                                     unlockFail(future, "No IDs left!");
+                                    queueRetry(future, connectCallback);
                                 } else {
                                     // We have some IDs available, just grab the first one and run with it
                                     final Optional<Integer> maybeId = allIds.stream().limit(1).findFirst();
@@ -230,9 +228,9 @@ public class ConsulService implements LighthouseService {
     private Future<Integer> getKnownServiceCount() {
         final Future<Integer> future = Future.future();
         
-        getAllServices().setHandler(res -> {
+        lighthouse.cluster().knownServices().setHandler(res -> {
             if(res.succeeded()) {
-                future.complete(res.result().getList().size());
+                future.complete(res.result().size());
             } else {
                 future.fail(res.cause());
             }
@@ -253,7 +251,7 @@ public class ConsulService implements LighthouseService {
         
         futureIds.setHandler(res -> {
             if(res.succeeded()) {
-                logger.info("Got pubsub data: {}", res.result());
+                logger.info("Got known shard pubsub data: {}", res.result());
                 final Set<Integer> shards = res.result().stream().map(e -> e.getInteger("shard"))
                         .filter(e -> e >= 0).collect(Collectors.toSet());
                 future.complete(shards);
@@ -281,6 +279,7 @@ public class ConsulService implements LighthouseService {
         });
     }
     
+    @SuppressWarnings("SameParameterValue")
     private void unlockFail(@Nonnull final Future<Void> future, @Nonnull final String reason) {
         client.deleteValue(CONSUL_SHARDING_LOCK, unlockRes -> {
             logger.warn("== Unlocked consul with failure {}", reason);
@@ -290,19 +289,5 @@ public class ConsulService implements LighthouseService {
                 future.fail(unlockRes.cause());
             }
         });
-    }
-    
-    @Nonnull
-    @Override
-    public Future<ServiceEntryList> getAllServices() {
-        final Future<ServiceEntryList> future = Future.future();
-        client.healthServiceNodes(CONSUL_SERVICE_NAME, true, res -> {
-            if(res.succeeded()) {
-                future.complete(res.result());
-            } else {
-                future.fail(res.cause());
-            }
-        });
-        return future;
     }
 }

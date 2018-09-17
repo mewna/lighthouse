@@ -59,11 +59,4 @@ public interface LighthouseService {
      */
     @Nonnull
     Future<Void> connect(@Nonnull BiFunction<Integer, Integer, Boolean> connectCallback);
-    
-    /**
-     * @return A list of all known services and the corresponding healthcheck
-     * statuses.
-     */
-    @Nonnull
-    Future<ServiceEntryList> getAllServices();
 }

@@ -1,15 +1,10 @@
 package com.mewna.lighthouse.pubsub;
 
 import com.mewna.lighthouse.Lighthouse;
-import com.mewna.lighthouse.service.ConsulService;
 import com.mewna.lighthouse.service.LighthouseService;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.consul.CheckStatus;
-import io.vertx.ext.consul.Service;
-import io.vertx.ext.consul.ServiceEntry;
-import io.vertx.ext.consul.ServiceEntryList;
 import io.vertx.redis.RedisClient;
 import io.vertx.redis.RedisOptions;
 import lombok.Getter;
@@ -22,7 +17,6 @@ import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 /**
  * @author amy
@@ -120,20 +114,10 @@ public class RedisPubsub implements LighthousePubsub {
     public Future<Collection<JsonObject>> pubsub(@Nonnull final JsonObject payload) {
         final Future<Collection<JsonObject>> future = Future.future();
         
-        lighthouse.service().getAllServices().setHandler(res -> {
+        lighthouse.cluster().knownServices().setHandler(res -> {
             if(res.succeeded()) {
-                final ServiceEntryList list = res.result();
+                final List<String> ids = res.result();
                 final List<Future<JsonObject>> futures = new ArrayList<>();
-                
-                final List<String> ids = list.getList().stream().filter(e -> e.getChecks().stream()
-                        .allMatch(c -> c.getStatus() == CheckStatus.PASSING))
-                        .map(ServiceEntry::getService)
-                        // Ignore non-lighthouse services
-                        .filter(e -> e.getName().equals(ConsulService.CONSUL_SERVICE_NAME))
-                        .map(Service::getId)
-                        // Ignore self
-                        // .filter(e -> !lighthouse.service().id().equals(e))
-                        .collect(Collectors.toList());
                 if(ids.size() != lighthouse.shardCount()) {
                     logger.warn("[Service] [{}] Expecting pubsub with {} services, but found {}: {}",
                             lighthouse.service().id(), lighthouse.shardCount(), ids.size(), ids);
