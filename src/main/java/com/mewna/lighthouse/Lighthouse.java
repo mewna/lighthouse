@@ -38,7 +38,7 @@ public interface Lighthouse {
     static Lighthouse lighthouse(@Nonnegative final int shardCount,
                                  @Nonnegative final int healthcheckPort, @Nonnull final String redisHost,
                                  @Nonnull final String redisAuth,
-                                 @Nonnull final BiFunction<Integer, Integer, Boolean> bootCallback,
+                                 @Nonnull final BiFunction<Integer, Integer, Future<Boolean>> bootCallback,
                                  @Nonnull final Function<JsonObject, JsonObject> messageHandler) {
         return new LighthouseImpl(shardCount, healthcheckPort, redisHost, redisAuth, bootCallback,
                 messageHandler);
@@ -117,5 +117,5 @@ public interface Lighthouse {
      * @return The shard boot callback.
      */
     @Nonnull
-    BiFunction<Integer, Integer, Boolean> bootCallback();
+    BiFunction<Integer, Integer, Future<Boolean>> bootCallback();
 }
