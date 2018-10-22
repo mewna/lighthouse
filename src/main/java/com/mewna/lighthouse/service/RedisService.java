@@ -73,7 +73,7 @@ public class RedisService implements LighthouseService {
                     // Try to lock
                     // Only set if not exists, and expire in 30 seconds
                     client.setWithOptions(LIGHTHOUSE_LOCK_NAME, id(), new SetOptions().setNX(true).setEX(30), lock -> {
-                        if(lock.succeeded()) {
+                        if(lock.succeeded() && lock.result().equals("OK")) {
                             final int shardCount = lighthouse.shardCount();
                             final Set<Integer> allIds = getAllShards();
                             
