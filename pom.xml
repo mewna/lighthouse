@@ -28,13 +28,6 @@
             <scope>compile</scope>
         </dependency>
 
-        <!-- Guava -->
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>${guava.version}</version>
-        </dependency>
-
         <!-- JSR 305 -->
         <dependency>
             <groupId>com.google.code.findbugs</groupId>
@@ -46,6 +39,11 @@
         <dependency>
             <groupId>io.vertx</groupId>
             <artifactId>vertx-core</artifactId>
+            <version>${vertx.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-web-client</artifactId>
             <version>${vertx.version}</version>
         </dependency>
         <dependency>

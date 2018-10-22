@@ -36,9 +36,8 @@ public interface LighthouseService {
     String id();
     
     /**
-     * @return This node's shard id. Will never be negative. May be {@code 0}.
+     * @return This node's shard id. May be {@code -1}.
      */
-    @Nonnegative
     int shardId();
     
     /**
