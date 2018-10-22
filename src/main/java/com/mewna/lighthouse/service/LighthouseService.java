@@ -1,7 +1,7 @@
 package com.mewna.lighthouse.service;
 
 import io.vertx.core.Future;
-import io.vertx.ext.consul.ServiceEntryList;
+import io.vertx.redis.RedisOptions;
 
 import javax.annotation.Nonnegative;
 import javax.annotation.Nonnull;
@@ -30,7 +30,7 @@ public interface LighthouseService {
     }
     
     /**
-     * @return The ID of this node's Consul service.
+     * @return The ID of this node's service.
      */
     @Nonnull
     String id();
@@ -42,14 +42,14 @@ public interface LighthouseService {
     int shardId();
     
     /**
-     * Start this Consul service instance.
+     * Start this Redis service instance.
      *
-     * @param host The hostname of the Consul server.
+     * @param options The redis connection options.
      *
-     * @return A future that resolves when the Consul service is fully started.
+     * @return A future that resolves when the Redis service is fully started.
      */
     @Nonnull
-    Future<LighthouseService> init(@Nonnull String host);
+    Future<LighthouseService> init(@Nonnull RedisOptions options);
     
     /**
      * @param connectCallback The callback to be invoked when a shard id has

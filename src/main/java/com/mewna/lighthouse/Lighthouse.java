@@ -23,7 +23,6 @@ public interface Lighthouse {
      *
      * @param shardCount      The number of shards for this lighthouse
      *                        instance.
-     * @param consulHost      The hostname of the Consul server to use.
      * @param healthcheckPort The port to run the healthcheck server on. In
      *                        production, this should probably be {@code 80}.
      * @param redisHost       The hostname of the Redis server to use.
@@ -36,12 +35,12 @@ public interface Lighthouse {
      *
      * @return A new lighthouse instance.
      */
-    static Lighthouse lighthouse(@Nonnegative final int shardCount, @Nonnull final String consulHost,
+    static Lighthouse lighthouse(@Nonnegative final int shardCount,
                                  @Nonnegative final int healthcheckPort, @Nonnull final String redisHost,
                                  @Nonnull final String redisAuth,
                                  @Nonnull final BiFunction<Integer, Integer, Boolean> bootCallback,
                                  @Nonnull final Function<JsonObject, JsonObject> messageHandler) {
-        return new LighthouseImpl(shardCount, consulHost, healthcheckPort, redisHost, redisAuth, bootCallback,
+        return new LighthouseImpl(shardCount, healthcheckPort, redisHost, redisAuth, bootCallback,
                 messageHandler);
     }
     
@@ -57,7 +56,7 @@ public interface Lighthouse {
     Vertx vertx();
     
     /**
-     * Start the lighthouse instance. Will set up pubsub, consul, etc.
+     * Start the lighthouse instance. Will set up pubsub, redis, etc.
      *
      * @return A {@link Future} that is resolved once the lighthouse components
      * are fully started.
@@ -83,12 +82,12 @@ public interface Lighthouse {
     LighthousePubsub pubsub();
     
     /**
-     * The Consul service used by this lighthouse instance. You
+     * The Redis service used by this lighthouse instance. You
      * <strong>probably</strong> don't want to use this yourself; it's mainly
      * exposed for internal usage. If you need eg. distributed locking, you may
      * find it slightly useful.
      *
-     * @return The consul service for this instance.
+     * @return The Redis service for this instance.
      */
     @Nonnull
     LighthouseService service();
