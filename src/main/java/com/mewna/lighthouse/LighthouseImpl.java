@@ -35,7 +35,7 @@ public final class LighthouseImpl implements Lighthouse {
     private final String redisHost;
     private final String redisAuth;
     @Getter
-    private final BiFunction<Integer, Integer, Boolean> bootCallback;
+    private final BiFunction<Integer, Integer, Future<Boolean>> bootCallback;
     @Getter
     private final Function<JsonObject, JsonObject> messageHandler;
     @Getter
@@ -73,7 +73,6 @@ public final class LighthouseImpl implements Lighthouse {
     @Nonnull
     @Override
     public Future<Void> startShard() {
-        // return service.connect(bootCallback);
-        throw new UnsupportedOperationException("TODO");
+        return service.connect(bootCallback);
     }
 }

@@ -56,13 +56,13 @@ public class RedisService implements LighthouseService {
     
     @Nonnull
     @Override
-    public Future<Void> connect(@Nonnull final BiFunction<Integer, Integer, Boolean> connectCallback) {
+    public Future<Void> connect(@Nonnull final BiFunction<Integer, Integer, Future<Boolean>> connectCallback) {
         final Future<Void> future = Future.future();
         tryConnect(future, connectCallback);
         return future;
     }
     
-    private void tryConnect(final Future<Void> future, final BiFunction<Integer, Integer, Boolean> connectCallback) {
+    private void tryConnect(final Future<Void> future, final BiFunction<Integer, Integer, Future<Boolean>> connectCallback) {
         getKnownServiceCount().setHandler(countRes -> {
             if(countRes.succeeded()) {
                 final int serviceCount = countRes.result();
@@ -91,14 +91,18 @@ public class RedisService implements LighthouseService {
                                         if(maybeId.isPresent()) {
                                             final int id = maybeId.get();
                                             shardId = id;
-                                            final boolean didResume = connectCallback.apply(id, shardCount);
-                                            if(didResume) {
-                                                // Unlock immediately
-                                                unlock(future);
-                                            } else {
-                                                // Unlock later
-                                                lighthouse.vertx().setTimer(5_500L, __ -> unlock(future));
-                                            }
+    
+                                            connectCallback.apply(id, shardCount).setHandler(shard -> {
+                                                if(shard.succeeded()) {
+                                                    if(shard.result()) {
+                                                        unlock(future);
+                                                    } else {
+                                                        lighthouse.vertx().setTimer(5_500L, __ -> unlock(future));
+                                                    }
+                                                } else {
+                                                    unlockFail(future, "Shard boot failed");
+                                                }
+                                            });
                                         } else {
                                             logger.error("== Failed shard id acquisition");
                                             // unlockFail(future, "Failed shard id acquisition");
@@ -146,7 +150,7 @@ public class RedisService implements LighthouseService {
         });
     }
     
-    private void queueRetry(final Future<Void> future, final BiFunction<Integer, Integer, Boolean> connectCallback) {
+    private void queueRetry(final Future<Void> future, final BiFunction<Integer, Integer, Future<Boolean>> connectCallback) {
         lighthouse.vertx().setTimer(1_000L, __ -> tryConnect(future, connectCallback));
     }
     

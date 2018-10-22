@@ -57,5 +57,5 @@ public interface LighthouseService {
      * @return A future that resolves when the shard has been connected.
      */
     @Nonnull
-    Future<Void> connect(@Nonnull BiFunction<Integer, Integer, Boolean> connectCallback);
+    Future<Void> connect(@Nonnull BiFunction<Integer, Integer, Future<Boolean>> connectCallback);
 }
