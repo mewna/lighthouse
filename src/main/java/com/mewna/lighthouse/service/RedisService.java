@@ -191,4 +191,9 @@ public class RedisService implements LighthouseService {
         
         return future;
     }
+    
+    @Override
+    public void release() {
+        shardId = -1;
+    }
 }

@@ -1,5 +1,6 @@
 package com.mewna.lighthouse.service;
 
+import com.mewna.lighthouse.Lighthouse;
 import io.vertx.core.Future;
 import io.vertx.redis.RedisOptions;
 
@@ -58,4 +59,10 @@ public interface LighthouseService {
      */
     @Nonnull
     Future<Void> connect(@Nonnull BiFunction<Integer, Integer, Future<Boolean>> connectCallback);
+    
+    /**
+     * Release the current shard ID. Don't call this directly, use
+     * {@link Lighthouse#release()}.
+     */
+    void release();
 }

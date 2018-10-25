@@ -75,4 +75,9 @@ public final class LighthouseImpl implements Lighthouse {
     public Future<Void> startShard() {
         return service.connect(bootCallback);
     }
+    
+    @Override
+    public void release() {
+        service.release();
+    }
 }

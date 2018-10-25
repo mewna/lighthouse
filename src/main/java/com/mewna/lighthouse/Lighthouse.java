@@ -118,4 +118,9 @@ public interface Lighthouse {
      */
     @Nonnull
     BiFunction<Integer, Integer, Future<Boolean>> bootCallback();
+    
+    /**
+     * Release the current shard ID.
+     */
+    void release();
 }
