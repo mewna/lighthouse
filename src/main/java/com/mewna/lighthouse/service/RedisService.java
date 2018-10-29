@@ -84,7 +84,7 @@ public class RedisService implements LighthouseService {
                                     logger.info("Acquired known IDs: {}", knownIds);
                                     allIds.removeAll(knownIds);
                                     if(allIds.isEmpty()) {
-                                        unlockFail(future, "No IDs left!");
+                                        unlock(future);
                                         queueRetry(future, connectCallback);
                                     } else {
                                         // We have some IDs available, just grab the first one and run with it
@@ -101,7 +101,7 @@ public class RedisService implements LighthouseService {
                                                         lighthouse.vertx().setTimer(5_500L, __ -> unlock(future));
                                                     }
                                                 } else {
-                                                    unlockFail(future, "Shard boot failed");
+                                                    unlock(future);
                                                 }
                                             });
                                         } else {
@@ -142,7 +142,7 @@ public class RedisService implements LighthouseService {
     @SuppressWarnings("SameParameterValue")
     private void unlockFail(@Nonnull final Future<Void> future, @Nonnull final String reason) {
         client.del(LIGHTHOUSE_LOCK_NAME, unlockRes -> {
-            logger.warn("== Unlocked with failure {}", reason);
+            logger.warn("== Unlocked with failure: {}", reason);
             if(unlockRes.succeeded()) {
                 future.fail(reason);
             } else {
