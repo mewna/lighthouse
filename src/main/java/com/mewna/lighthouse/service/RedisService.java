@@ -17,6 +17,7 @@ import java.util.Collection;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -36,6 +37,8 @@ public class RedisService implements LighthouseService {
     @Getter
     private int shardId = -1;
     private RedisClient client;
+    
+    private final AtomicBoolean connecting = new AtomicBoolean(false);
     
     @Nonnull
     @Override
@@ -57,6 +60,7 @@ public class RedisService implements LighthouseService {
     @Nonnull
     @Override
     public Future<Void> connect(@Nonnull final BiFunction<Integer, Integer, Future<Boolean>> connectCallback) {
+        connecting.set(true);
         final Future<Void> future = Future.future();
         tryConnect(future, connectCallback);
         return future;
@@ -84,7 +88,7 @@ public class RedisService implements LighthouseService {
                                     logger.info("Acquired known IDs: {}", knownIds);
                                     allIds.removeAll(knownIds);
                                     if(allIds.isEmpty()) {
-                                        unlock(future);
+                                        // unlock(future);
                                         queueRetry(future, connectCallback);
                                     } else {
                                         // We have some IDs available, just grab the first one and run with it
@@ -107,7 +111,7 @@ public class RedisService implements LighthouseService {
                                         } else {
                                             logger.error("== Failed shard id acquisition");
                                             // unlockFail(future, "Failed shard id acquisition");
-                                            unlock(Future.future());
+                                            // unlock(Future.future());
                                             queueRetry(future, connectCallback);
                                         }
                                     }
@@ -136,6 +140,7 @@ public class RedisService implements LighthouseService {
             } else {
                 future.fail(unlockRes.cause());
             }
+            connecting.set(false);
         });
     }
     

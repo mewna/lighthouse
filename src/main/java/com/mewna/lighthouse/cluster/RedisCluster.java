@@ -62,7 +62,9 @@ public class RedisCluster implements LighthouseCluster {
         pingServer = lighthouse.vertx().createHttpServer(new HttpServerOptions().setPort(port))
                 .requestHandler(req -> {
                     if(req.path().equalsIgnoreCase("/")) {
-                        req.response().setStatusCode(200).end("OK");
+                        req.response().setStatusCode(200)
+                                .putHeader("Content-Type", "text/plain")
+                                .end(id());
                     }
                 });
         
@@ -116,12 +118,13 @@ public class RedisCluster implements LighthouseCluster {
                 entries.getMap().forEach((k, v) -> {
                     final String ip = (String) v;
                     client.getAbs("http://" + ip).send(res -> {
-                        if(res.succeeded()) {
+                        if(res.succeeded() && k.equals(res.result().bodyAsString())) {
                             logger.debug("Successfully pinged {} @ {}.", k, ip);
                         } else {
                             logger.warn("Couldn't ping {} @ {}!", k, ip, res.cause());
                             // Don't care too much about if it works or not, since ex. race conditions
-                            // around deleting it may cause failures that don't really matter
+                            // around deleting it may cause failures that don't really matter. If the
+                            // service is actually still alive, it'll re-add itself anyway.
                             redis.hdel(LIGHTHOUSE_CLUSTER_KEY, k, __ -> {
                             });
                         }
