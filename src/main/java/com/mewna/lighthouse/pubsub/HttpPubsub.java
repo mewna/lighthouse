@@ -48,7 +48,7 @@ public class HttpPubsub implements LighthousePubsub {
     private void handleRequest(@Nonnull final HttpServerRequest req) {
         final Buffer buffer = Buffer.buffer();
         
-        req.bodyHandler(buffer::appendBuffer).endHandler(__ -> {
+        req.handler(buffer::appendBuffer).endHandler(__ -> {
             final String message = buffer.toString();
             final JsonObject payload = new JsonObject(message);
             final JsonObject data = payload.getJsonObject("d");
