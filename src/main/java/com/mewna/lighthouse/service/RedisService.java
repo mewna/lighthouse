@@ -49,7 +49,7 @@ public class RedisService implements LighthouseService {
     @Nonnull
     @Override
     public Future<LighthouseService> init(@Nonnull final RedisOptions options) {
-        final var future = Future.<LighthouseService>future();
+        final Future<LighthouseService> future = Future.future();
         
         client = RedisClient.create(lighthouse.vertx(), options);
         future.complete(this);
