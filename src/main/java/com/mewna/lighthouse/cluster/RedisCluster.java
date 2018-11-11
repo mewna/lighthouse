@@ -4,6 +4,7 @@ import com.mewna.lighthouse.Lighthouse;
 import io.vertx.core.Future;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerOptions;
+import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.redis.RedisClient;
@@ -17,7 +18,11 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nonnegative;
 import javax.annotation.Nonnull;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 /**
  * @author amy
@@ -32,16 +37,13 @@ public class RedisCluster implements LighthouseCluster {
     private final Logger logger = LoggerFactory.getLogger(getClass());
     
     private final Lighthouse lighthouse;
-    
+    private final Map<String, Consumer<HttpServerRequest>> routes = new ConcurrentHashMap<>();
     @Getter
     private RedisClient redis;
-    
     @Getter
     private HttpServer pingServer;
-    
     @Getter
     private WebClient client;
-    
     @Getter
     private int port;
     
@@ -59,14 +61,12 @@ public class RedisCluster implements LighthouseCluster {
         
         redis = RedisClient.create(lighthouse.vertx(), options);
         client = WebClient.create(lighthouse.vertx());
+        registerRoute("/", req ->
+                req.response().setStatusCode(200)
+                        .putHeader("Content-Type", "text/plain")
+                        .end(id()));
         pingServer = lighthouse.vertx().createHttpServer(new HttpServerOptions().setPort(port))
-                .requestHandler(req -> {
-                    if(req.path().equalsIgnoreCase("/")) {
-                        req.response().setStatusCode(200)
-                                .putHeader("Content-Type", "text/plain")
-                                .end(id());
-                    }
-                });
+                .requestHandler(req -> routes.get(req.path()).accept(req));
         
         pingServer.listen(res -> {
             if(res.succeeded()) {
@@ -96,6 +96,30 @@ public class RedisCluster implements LighthouseCluster {
         });
         
         return future;
+    }
+    
+    @Nonnull
+    @Override
+    public Future<Map<String, String>> knownServiceIps() {
+        final Future<Map<String, String>> future = Future.future();
+    
+        redis.hgetall(LIGHTHOUSE_CLUSTER_KEY, res -> {
+            if(res.succeeded()) {
+                final JsonObject result = res.result();
+                final Map<String, String> out = new HashMap<>();
+                result.getMap().keySet().forEach(k -> out.put(k, result.getString(k)));
+                future.complete(out);
+            } else {
+                future.fail(res.cause());
+            }
+        });
+    
+        return future;
+    }
+    
+    @Override
+    public void registerRoute(@Nonnull final String route, @Nonnull final Consumer<HttpServerRequest> consumer) {
+        routes.put(route, consumer);
     }
     
     private void updateRegistry() {

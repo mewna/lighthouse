@@ -15,11 +15,9 @@ public interface LighthousePubsub {
     /**
      * Start the pubsub instance
      *
-     * @param options Options for connecting to Redis
-     *
      * @return A future that resolves when the pubsub client is ready
      */
-    Future<LighthousePubsub> init(@Nonnull RedisOptions options);
+    Future<LighthousePubsub> init();
     
     /**
      * Send a pubsub message to all connected services

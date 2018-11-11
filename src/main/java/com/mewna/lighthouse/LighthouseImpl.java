@@ -3,7 +3,7 @@ package com.mewna.lighthouse;
 import com.mewna.lighthouse.cluster.LighthouseCluster;
 import com.mewna.lighthouse.cluster.RedisCluster;
 import com.mewna.lighthouse.pubsub.LighthousePubsub;
-import com.mewna.lighthouse.pubsub.RedisPubsub;
+import com.mewna.lighthouse.pubsub.HttpPubsub;
 import com.mewna.lighthouse.service.LighthouseService;
 import com.mewna.lighthouse.service.RedisService;
 import io.vertx.core.CompositeFuture;
@@ -50,14 +50,14 @@ public final class LighthouseImpl implements Lighthouse {
     @Nonnull
     @Override
     public Future<Lighthouse> init() {
-        pubsub = new RedisPubsub(this, messageHandler);
+        pubsub = new HttpPubsub(this, messageHandler);
         cluster = new RedisCluster(this);
         service = new RedisService(this);
         
         final Future<Lighthouse> future = Future.future();
         
         CompositeFuture.all(Arrays.asList(
-                pubsub.init(new RedisOptions().setHost(redisHost).setAuth(redisAuth)),
+                pubsub.init(),
                 cluster.init(new RedisOptions().setHost(redisHost).setAuth(redisAuth), healthcheckPort),
                 service.init(new RedisOptions().setHost(redisHost).setAuth(redisAuth))
         )).setHandler(res -> {
