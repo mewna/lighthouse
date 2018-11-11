@@ -27,7 +27,6 @@ import java.util.function.Function;
 @RequiredArgsConstructor
 public class HttpPubsub implements LighthousePubsub {
     private final Logger logger = LoggerFactory.getLogger(getClass());
-    private final Map<String, Future<JsonObject>> pending = new ConcurrentHashMap<>();
     
     private final Lighthouse lighthouse;
     private final Function<JsonObject, JsonObject> messageHandler;
@@ -52,39 +51,21 @@ public class HttpPubsub implements LighthousePubsub {
             final String message = buffer.toString();
             final JsonObject payload = new JsonObject(message);
             final JsonObject data = payload.getJsonObject("d");
-            final String nonce = payload.getString("nonce");
-            @SuppressWarnings("unused")
-            final String sender = payload.getString("sender");
-            final String target = payload.getString("target");
-            final String mode = payload.getString("mode");
-            if(target.equals(lighthouse.service().id())) {
-                // If the target is this service, then we need to handle it
-                // and publish a response
-                if(pending.containsKey(nonce) && mode.equals("response")) {
-                    // If we have the nonce, then we were waiting on it for a response
-                    // and can resolve the future now
-                    logger.debug("[Service] [{}] Completed nonce {} with data {}", lighthouse.service().id(),
-                            nonce, data.encodePrettily());
-                    final Future<JsonObject> pendingFuture = pending.remove(nonce);
-                    pendingFuture.complete(data);
-                } else {
-                    // Note that we handle some messages ourselves, and will only call the
-                    // message handler callback if it ISN'T an internal message
-                    final String maybeType = data.getString("__lighthouse:type", null);
-                    final JsonObject response;
-                    if(LighthouseService.SHARD_ID_QUERY.equals(maybeType)) {
-                        // Fetch shard id
-                        response = new JsonObject().put("id", lighthouse.service().id())
-                                .put("shard", lighthouse.service().shardId());
-                    } else {
-                        logger.debug("[Service] [{}] Invoking user-provided messagehandler for message: {}",
-                                lighthouse.service().id(), payload.encodePrettily());
-                        // User-provided handler
-                        response = messageHandler.apply(data);
-                    }
-                    req.response().setStatusCode(200).end(response.encode());
-                }
+            // Note that we handle some messages ourselves, and will only call the
+            // message handler callback if it ISN'T an internal message
+            final String maybeType = data.getString("__lighthouse:type", null);
+            final JsonObject response;
+            if(LighthouseService.SHARD_ID_QUERY.equals(maybeType)) {
+                // Fetch shard id
+                response = new JsonObject().put("id", lighthouse.service().id())
+                        .put("shard", lighthouse.service().shardId());
+            } else {
+                logger.debug("[Service] [{}] Invoking user-provided messagehandler for message: {}",
+                        lighthouse.service().id(), payload.encodePrettily());
+                // User-provided handler
+                response = messageHandler.apply(data);
             }
+            req.response().setStatusCode(200).end(response.encode());
         });
     }
     
@@ -106,7 +87,6 @@ public class HttpPubsub implements LighthousePubsub {
                     final String nonce = UUID.randomUUID().toString();
                     logger.debug("[Service] [{}] Sending to service {} with nonce {}",
                             lighthouse.service().id(), e, nonce);
-                    pending.put(nonce, pubsubFuture);
                     futures.add(pubsubFuture);
                     lighthouse.vertx().setTimer(5_000L, __ -> {
                         // Fail futures if they're not completed within 5s
@@ -118,7 +98,7 @@ public class HttpPubsub implements LighthousePubsub {
                     });
                     
                     client.postAbs("http://" + e + "/pubsub")
-                            .sendJsonObject(payload(nonce, lighthouse.service().id(), e, "request", payload),
+                            .sendJsonObject(payload(nonce, payload),
                                     result -> {
                                         if(result.succeeded()) {
                                             pubsubFuture.complete(result.result().bodyAsJsonObject());

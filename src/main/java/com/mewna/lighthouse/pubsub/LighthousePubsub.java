@@ -29,13 +29,8 @@ public interface LighthousePubsub {
      */
     Future<Collection<JsonObject>> pubsub(@Nonnull JsonObject payload);
     
-    default JsonObject payload(@Nonnull final String nonce, @Nonnull final String sender, @Nonnull final String target,
-                               @Nonnull final String mode, @Nonnull final JsonObject data) {
+    default JsonObject payload(@Nonnull final JsonObject data) {
         return new JsonObject()
-                .put("nonce", nonce)
-                .put("sender", sender)
-                .put("target", target)
-                .put("mode", mode)
                 .put("d", data);
     }
 }
