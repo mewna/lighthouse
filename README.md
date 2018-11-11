@@ -32,12 +32,6 @@ don't want to do this, you have to implement the full-retry logic
 yourself. I'm open to PRs to solve this, but will not be implementing it
 at this time.
 
-**WARNING**
-
-Due to how Consul services work, it may take a little bit for a reshard
-to fully work, and you may end up with a little more downtime (probably
-~5m at most) than you might expect!
-
 ## Installation
 
 Install it to your maven local somehow, idk
@@ -46,9 +40,8 @@ I'll put a jitpack link here eventually
 
 ## Usage
 
-lighthouse uses [Consul](https://consul.io) (for distributed locking and
-coordination) and [Redis](https://redis.io) (for pubsub). You need
-working instances of both of these to use lighthouse.
+lighthouse uses [Redis](https://redis.io). You need a working instance of Redis
+to use lighthouse.
 
 Sample use:
 ```Java
@@ -65,7 +58,6 @@ public class DistributedShard {
         final String consulHost = System.getenv("CONSUL_HOST");
         final String redisHost = System.getenv("REDIS_HOST");
         final String redisAuth = System.getenv("REDIS_AUTH");
-        // Used for consul health checks
         // In production, this should probably just be port 80
         final int healthPort = 9000 + new Random().nextInt(1000);
         logger.info("Running healthcheck on port {}...", healthPort);
