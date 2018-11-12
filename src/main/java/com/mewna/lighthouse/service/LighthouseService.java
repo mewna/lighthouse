@@ -1,7 +1,6 @@
 package com.mewna.lighthouse.service;
 
 import com.mewna.lighthouse.Lighthouse;
-import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.redis.RedisOptions;
 
@@ -60,8 +59,23 @@ public interface LighthouseService {
     @Nonnull
     Future<Void> connect(@Nonnull BiFunction<Integer, Integer, Future<Boolean>> connectCallback);
     
+    /**
+     * Lock for sharding. Successful acquisition of the lock means nothing but
+     * the current shard can lock.
+     *
+     * @return A future that resolves when lock acquisition succeeds or fails.
+     */
     @Nonnull
-    Future<AsyncResult<String>> lock();
+    Future<Boolean> lock();
+    
+    /**
+     * Release the lock from {@link #lock()}. Should only be called if this
+     * process is the one that acquired the lock.
+     *
+     * @return A future that resolves when the lock is released.
+     */
+    @Nonnull
+    Future<Void> unlock();
     
     /**
      * Release the current shard ID. Don't call this directly, use

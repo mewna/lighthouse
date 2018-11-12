@@ -69,11 +69,23 @@ public class RedisService implements LighthouseService {
     
     @Nonnull
     @Override
-    public Future<AsyncResult<String>> lock() {
-        final Future<AsyncResult<String>> future = Future.future();
-        
-        client.setWithOptions(LIGHTHOUSE_LOCK_NAME, id(), new SetOptions().setNX(true).setEX(30), future::complete);
-        
+    public Future<Boolean> lock() {
+        final Future<Boolean> future = Future.future();
+        client.setWithOptions(LIGHTHOUSE_LOCK_NAME, id(), new SetOptions().setNX(true).setEX(30), lock -> {
+            if(lock.succeeded() && "OK".equals(lock.result())) {
+                future.complete(true);
+            } else {
+                future.complete(false);
+            }
+        });
+        return future;
+    }
+    
+    @Nonnull
+    @Override
+    public Future<Void> unlock() {
+        final Future<Void> future = Future.future();
+        unlock(future);
         return future;
     }
     
@@ -85,10 +97,9 @@ public class RedisService implements LighthouseService {
                     logger.warn("== Not enough nodes to start sharding ({} < {}), queueing retry...", serviceCount, lighthouse.shardCount());
                     queueRetry(future, connectCallback);
                 } else {
-                    lock().setHandler(_lock -> {
-                        final AsyncResult<String> lock = _lock.result();
+                    lock().setHandler(lock -> {
                         // We check equality like this to avoid dealing with NPEs
-                        if(lock.succeeded() && "OK".equals(lock.result())) {
+                        if(lock.succeeded() && lock.result()) {
                             final int shardCount = lighthouse.shardCount();
                             final Set<Integer> allIds = getAllShards();
         
