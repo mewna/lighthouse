@@ -1,10 +1,10 @@
 package com.mewna.lighthouse.service;
 
 import com.mewna.lighthouse.Lighthouse;
+import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.redis.RedisOptions;
 
-import javax.annotation.Nonnegative;
 import javax.annotation.Nonnull;
 import java.net.Inet4Address;
 import java.net.UnknownHostException;
@@ -59,6 +59,9 @@ public interface LighthouseService {
      */
     @Nonnull
     Future<Void> connect(@Nonnull BiFunction<Integer, Integer, Future<Boolean>> connectCallback);
+    
+    @Nonnull
+    Future<AsyncResult<String>> lock();
     
     /**
      * Release the current shard ID. Don't call this directly, use

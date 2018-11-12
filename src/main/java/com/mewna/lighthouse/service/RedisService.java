@@ -1,6 +1,7 @@
 package com.mewna.lighthouse.service;
 
 import com.mewna.lighthouse.Lighthouse;
+import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import io.vertx.redis.RedisClient;
@@ -66,6 +67,16 @@ public class RedisService implements LighthouseService {
         return future;
     }
     
+    @Nonnull
+    @Override
+    public Future<AsyncResult<String>> lock() {
+        final Future<AsyncResult<String>> future = Future.future();
+        
+        client.setWithOptions(LIGHTHOUSE_LOCK_NAME, id(), new SetOptions().setNX(true).setEX(30), future::complete);
+        
+        return future;
+    }
+    
     private void tryConnect(final Future<Void> future, final BiFunction<Integer, Integer, Future<Boolean>> connectCallback) {
         getKnownServiceCount().setHandler(countRes -> {
             if(countRes.succeeded()) {
@@ -74,14 +85,13 @@ public class RedisService implements LighthouseService {
                     logger.warn("== Not enough nodes to start sharding ({} < {}), queueing retry...", serviceCount, lighthouse.shardCount());
                     queueRetry(future, connectCallback);
                 } else {
-                    // Try to lock
-                    // Only set if not exists, and expire in 30 seconds
-                    client.setWithOptions(LIGHTHOUSE_LOCK_NAME, id(), new SetOptions().setNX(true).setEX(30), lock -> {
+                    lock().setHandler(_lock -> {
+                        final AsyncResult<String> lock = _lock.result();
                         // We check equality like this to avoid dealing with NPEs
                         if(lock.succeeded() && "OK".equals(lock.result())) {
                             final int shardCount = lighthouse.shardCount();
                             final Set<Integer> allIds = getAllShards();
-                            
+        
                             getKnownShards().setHandler(res -> {
                                 if(res.succeeded()) {
                                     final Set<Integer> knownIds = res.result();
@@ -96,7 +106,7 @@ public class RedisService implements LighthouseService {
                                         if(maybeId.isPresent()) {
                                             final int id = maybeId.get();
                                             shardId = id;
-    
+                        
                                             connectCallback.apply(id, shardCount).setHandler(shard -> {
                                                 if(shard.succeeded()) {
                                                     if(shard.result()) {
@@ -141,18 +151,6 @@ public class RedisService implements LighthouseService {
                 future.fail(unlockRes.cause());
             }
             connecting.set(false);
-        });
-    }
-    
-    @SuppressWarnings("SameParameterValue")
-    private void unlockFail(@Nonnull final Future<Void> future, @Nonnull final String reason) {
-        client.del(LIGHTHOUSE_LOCK_NAME, unlockRes -> {
-            logger.warn("== Unlocked with failure: {}", reason);
-            if(unlockRes.succeeded()) {
-                future.fail(reason);
-            } else {
-                future.fail(unlockRes.cause());
-            }
         });
     }
     
