@@ -5,6 +5,7 @@ import io.vertx.core.Future;
 import io.vertx.redis.RedisOptions;
 
 import javax.annotation.Nonnull;
+import java.util.Set;
 import java.util.function.BiFunction;
 
 /**
@@ -67,4 +68,10 @@ public interface LighthouseService {
      * {@link Lighthouse#release()}.
      */
     void release();
+    
+    @Nonnull
+    Set<Integer> getAllShards();
+    
+    @Nonnull
+    Future<Set<Integer>> getKnownShards();
 }

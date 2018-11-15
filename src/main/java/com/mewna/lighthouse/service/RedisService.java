@@ -1,7 +1,6 @@
 package com.mewna.lighthouse.service;
 
 import com.mewna.lighthouse.Lighthouse;
-import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import io.vertx.redis.RedisClient;
@@ -35,11 +34,10 @@ public class RedisService implements LighthouseService {
     private final UUID id = UUID.randomUUID();
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final Lighthouse lighthouse;
+    private final AtomicBoolean connecting = new AtomicBoolean(false);
     @Getter
     private int shardId = -1;
     private RedisClient client;
-    
-    private final AtomicBoolean connecting = new AtomicBoolean(false);
     
     @Nonnull
     @Override
@@ -102,7 +100,7 @@ public class RedisService implements LighthouseService {
                         if(lock.succeeded() && lock.result()) {
                             final int shardCount = lighthouse.shardCount();
                             final Set<Integer> allIds = getAllShards();
-        
+                            
                             getKnownShards().setHandler(res -> {
                                 if(res.succeeded()) {
                                     final Set<Integer> knownIds = res.result();
@@ -117,7 +115,7 @@ public class RedisService implements LighthouseService {
                                         if(maybeId.isPresent()) {
                                             final int id = maybeId.get();
                                             shardId = id;
-                        
+                                            
                                             connectCallback.apply(id, shardCount).setHandler(shard -> {
                                                 if(shard.succeeded()) {
                                                     if(shard.result()) {
@@ -183,11 +181,13 @@ public class RedisService implements LighthouseService {
         return future;
     }
     
-    private Set<Integer> getAllShards() {
+    @Nonnull
+    public Set<Integer> getAllShards() {
         return IntStream.range(0, lighthouse.shardCount()).boxed().collect(Collectors.toSet());
     }
     
-    private Future<Set<Integer>> getKnownShards() {
+    @Nonnull
+    public Future<Set<Integer>> getKnownShards() {
         final Future<Set<Integer>> future = Future.future();
         
         final Future<Collection<JsonObject>> futureIds = lighthouse.pubsub()
