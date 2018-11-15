@@ -27,7 +27,7 @@ public interface LighthouseService {
      */
     int shardId();
     
-    void shardId(@Nonnegative int a);
+    LighthouseService shardId(@Nonnegative int a);
     
     /**
      * Start this Redis service instance.
