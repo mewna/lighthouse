@@ -8,6 +8,7 @@ import io.vertx.redis.RedisOptions;
 import io.vertx.redis.op.SetOptions;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,6 +37,7 @@ public class RedisService implements LighthouseService {
     private final Lighthouse lighthouse;
     private final AtomicBoolean connecting = new AtomicBoolean(false);
     @Getter
+    @Setter
     private int shardId = -1;
     private RedisClient client;
     

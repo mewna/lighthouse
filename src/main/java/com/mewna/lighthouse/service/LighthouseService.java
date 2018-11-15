@@ -4,6 +4,7 @@ import com.mewna.lighthouse.Lighthouse;
 import io.vertx.core.Future;
 import io.vertx.redis.RedisOptions;
 
+import javax.annotation.Nonnegative;
 import javax.annotation.Nonnull;
 import java.util.Set;
 import java.util.function.BiFunction;
@@ -25,6 +26,8 @@ public interface LighthouseService {
      * @return This node's shard id. May be {@code -1}.
      */
     int shardId();
+    
+    void shardId(@Nonnegative int a);
     
     /**
      * Start this Redis service instance.
