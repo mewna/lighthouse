@@ -5,8 +5,6 @@ import io.vertx.core.Future;
 import io.vertx.redis.RedisOptions;
 
 import javax.annotation.Nonnull;
-import java.net.Inet4Address;
-import java.net.UnknownHostException;
 import java.util.function.BiFunction;
 
 /**
@@ -15,19 +13,6 @@ import java.util.function.BiFunction;
  */
 public interface LighthouseService {
     String SHARD_ID_QUERY = "lighthouse:query:shard-id";
-    
-    @Nonnull
-    static String getIp() {
-        final String podIpEnv = System.getenv("POD_IP");
-        if(podIpEnv != null) {
-            return podIpEnv;
-        }
-        try {
-            return Inet4Address.getLocalHost().getHostAddress();
-        } catch(final UnknownHostException e) {
-            throw new IllegalStateException("DNS broken? Can't resolve localhost!", e);
-        }
-    }
     
     /**
      * @return The ID of this node's service.
