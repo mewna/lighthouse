@@ -100,10 +100,12 @@ public class HttpPubsub implements LighthousePubsub {
                     client.postAbs("http://" + e + "/pubsub")
                             .sendJsonObject(payload(payload),
                                     result -> {
-                                        if(result.succeeded()) {
-                                            pubsubFuture.complete(result.result().bodyAsJsonObject());
-                                        } else {
-                                            pubsubFuture.fail(result.cause());
+                                        if(!pubsubFuture.isComplete()) {
+                                            if(result.succeeded()) {
+                                                pubsubFuture.complete(result.result().bodyAsJsonObject());
+                                            } else {
+                                                pubsubFuture.fail(result.cause());
+                                            }
                                         }
                                     });
                 });
